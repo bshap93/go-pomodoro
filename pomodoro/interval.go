@@ -1,6 +1,7 @@
 package pomodoro
 
 import (
+	"context"
 	"errors"
 	"time"
 )
@@ -78,24 +79,71 @@ func NewConfig(repo Repository, pomodoro, shortBreak,
 }
 
 func nextCategory(r Repository) (string, error) {
+	// last interval just before the current
 	li, err := r.Last()
 	if err != nil && err == ErrNoIntervals {
 		return CategoryPomodoro, nil
 	}
+	if err != nil {
+		return "", err
+	}
+
+	if li.Category == CategoryLongBreak || li.Category == CategoryShortBreak {
+		return CategoryPomodoro, nil
+	}
+
+	lastBreaks, err := r.Breaks(3)
+	if err != nil {
+		return "", err
+	}
+
+	if len(lastBreaks) < 3 {
+		return CategoryShortBreak, nil
+	}
+
+	for _, i := range lastBreaks {
+		if i.Category == CategoryLongBreak {
+			return CategoryShortBreak, nil
+		}
+	}
+
+	return CategoryLongBreak, nil
+}
+
+type Callback func(Interval)
+
+func tick(ctx context.Context, id int64, config *IntervalConfig,
+  start, periodic, end) error {
+
+  ticker := time.NewTicker(time.Second) 
+  defer ticker.Stop()
+
+  i, err := config.repo.ByID(id)
   if err != nil {
-    return "", err
+    return err
+  } 
+
+  if i.State == StatePaused {
+    return nil
   }
 
-  if li.Category == CategoryLongBreak,  || li.Category == CategoryShortBreak {
-    return CategoryPomodoro, nil
-  }
-
-  lastBreaks, err := r.Breaks(3)
-  if err != nil {
-    return "", err
-  }
-
-  if len(lastBreaks) < 3 {
-    return CategoryShortBreak, nil
+  expire := time.After(i.PlannedDuration - i.ActualDuration)
+  start(i)
+  for {
+    select {
+    // Ticker's channel
+    case <-ticker.C:
+      i, err := config.repo.ByID(id)
+      if err != nil {
+        return err
+      }
+      if i.State == StatePaused {
+         return nil
+      }
+      i.ActualDuration += time.Second
+      if err := config.repo.Update(i); err != nil {
+         
+      }
+    }
   }
 }
