@@ -3,6 +3,7 @@ package pomodoro
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -44,11 +45,11 @@ type Interval struct {
 	State           int
 }
 
-// Interface for Create to create an interval and returnits ID.
-// Update to update the interval.
-// ByID to retrieve an interval by passing in its id.
-// Last to find the last interval.
-// Breaks to retrieve intervals that are breaks.
+// Interface for Create to create/save an interval and returnits ID.
+// Update to update the interval details in data store.
+// ByID to retrieve an interval by passing in its id. from data store.
+// Last to find the last interval from the data store.
+// Breaks to retrieve intervals that are breaks from Data store.
 type Repository interface {
 	Create(i Interval) (int64, error)
 	Update(i Interval) error
@@ -222,4 +223,34 @@ func GetInterval(config *IntervalConfig) (Interval, error) {
 	}
 
 	return newInterval(config)
+}
+
+func (i Interval) Start(ctx context.Context, config *IntervalConfig,
+	start, periodic, end Callback) error {
+	switch i.State {
+	case StateRunning:
+		return nil
+	case StateNotStarted:
+		i.StartTime = time.Now()
+		fallthrough
+	case StatePaused:
+		i.State = StateRunning
+		if err := config.repo.Update(i); err != nil {
+			return err
+		}
+		return tick(ctx, i.ID, config, start, periodic, end)
+	case StateCancelled, StateDone:
+		return fmt.Errorf("%w: Cannot start", ErrIntervalsCompleted)
+	default:
+		return fmt.Errorf("%w: %d", ErrInvalidState, i.State)
+	}
+}
+
+// Callers use to pause a running interval
+func (i Interval) Pause(config *IntervalConfig) error {
+	if i.State != StateRunning {
+		return ErrIntervalsNotRunning
+	}
+	i.State = StatePaused
+	return config.repo.Update(i)
 }
