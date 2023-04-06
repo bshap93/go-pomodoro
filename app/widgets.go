@@ -11,7 +11,7 @@ import (
 
 type widgets struct {
 	// Donut is the widget that displays the CPU usage.
-	donut          *donut.Donut
+	donTimer          *donut.Donut
 	disType        *segmentdisplay.SegmentDisplay
 	txtInfo        *text.Text
 	txtTimer       *text.Text
@@ -65,7 +65,6 @@ func newWidgets(ctx context.Context, errorCh chan<- error) (*widgets, error) {
 	if err != nil {
 		return nil, err
 	}
-	w.txtTimer
 
 	w.txtTimer, err = newText(ctx, w.updateTxtTimer, errorCh)
 	if err != nil {
@@ -134,5 +133,5 @@ func newSegmentDisplay(ctx context.Context, updateText <-chan string,
 			}
 		}
 	}()
-	return dis, nil
+	return sd, nil
 }
