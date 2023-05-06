@@ -15,18 +15,18 @@ func newGrid(b *buttonSet, w *widgets,
 
 	builder.Add(
 		grid.RowHeightPerc(30,
-			grod.ColWidthPerc(30,
+			grid.ColWidthPercWithOpts(30,
 				[]container.Option{
 					container.Border(linestyle.Light),
 					container.BorderTitle("Press Q to Quit"),
 				}, // container options
 				grid.RowHeightPerc(80,
 					grid.Widget(w.donTimer)),
-				grid.RowHeightPerc(20,
+				grid.RowHeightPercWithOpts(20,
 					[]container.Option{
 						container.AlignHorizontal(align.HorizontalCenter),
 					}, // container options
-					grid.Widget(w.txtTimer,
+					grid.Widget(w.disType,
 						container.AlignHorizontal(align.HorizontalCenter),
 						container.AlignVertical(align.VerticalMiddle),
 						container.PaddingLeftPercent(49),
